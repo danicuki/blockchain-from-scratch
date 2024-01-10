@@ -62,6 +62,11 @@ fn number_fromKey(k: Key) -> u64 {
     }
 }
 
+fn typed_number(v: Vec<Key>) -> u64 {
+    let numbers = v.iter().map(|x| number_fromKey(x.clone()));
+    numbers.fold(0, |acc, x| acc * 10 + x)
+}
+
 impl StateMachine for Atm {
     // Notice that we are using the same type for the state as we are using for the machine this time.
     type State = Self;
@@ -73,20 +78,28 @@ impl StateMachine for Atm {
                 Atm {
                     cash_inside: starting_state.cash_inside,
                     expected_pin_hash: Auth::Authenticating(*pin_hash),
-                    keystroke_register: Vec::new(),
+                    keystroke_register: starting_state.keystroke_register.clone(),
                 }
             }
             Action::PressKey(k) => {
                 match starting_state.expected_pin_hash {
                     Auth::Waiting => { starting_state.clone() }
                     Auth::Authenticated => {
-                       if *k == Key::Enter { //TODO
-                        //  let numbers = starting_state.keystroke_register.iter().map(|x| number_fromKey(x.clone())).collect();
-                         Atm {
-                            cash_inside: starting_state.cash_inside,
-                            expected_pin_hash: Auth::Authenticated,
-                            keystroke_register: Vec::new(),
-                         }
+                       if *k == Key::Enter {
+                        let withdraw_amount = typed_number(starting_state.keystroke_register.clone());
+                        if withdraw_amount <= starting_state.cash_inside {
+                            Atm {
+                                cash_inside: starting_state.cash_inside - withdraw_amount,
+                                expected_pin_hash: Auth::Waiting,
+                                keystroke_register: Vec::new(),
+                            }
+                        }else{
+                            Atm {
+                                cash_inside: starting_state.cash_inside,
+                                expected_pin_hash: Auth::Waiting,
+                                keystroke_register: Vec::new(),
+                            }
+                        }
                        } else {
                          let mut new_vec = starting_state.keystroke_register.clone();
                          new_vec.push(k.clone());
@@ -98,12 +111,20 @@ impl StateMachine for Atm {
                         }
                     }
                     Auth::Authenticating(hash) => {
-                       if *k == Key::Enter { //TODO
-                         Atm {
-                            cash_inside: starting_state.cash_inside,
-                            expected_pin_hash: Auth::Authenticating(hash),
-                            keystroke_register: Vec::new(),
-                         } 
+                       if *k == Key::Enter {
+                          if crate::hash(&starting_state.keystroke_register.clone()) == hash {
+                            Atm {
+                                cash_inside: starting_state.cash_inside,
+                                expected_pin_hash: Auth::Authenticated,
+                                keystroke_register: Vec::new(),
+                            } 
+                          }else {
+                            Atm {
+                                cash_inside: starting_state.cash_inside,
+                                expected_pin_hash: Auth::Waiting,
+                                keystroke_register: Vec::new(),
+                            } 
+                          }
                        } else {
                          let mut new_vec = starting_state.keystroke_register.clone();
                          new_vec.push(k.clone());
