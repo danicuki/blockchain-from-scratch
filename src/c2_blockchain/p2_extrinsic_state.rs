@@ -110,10 +110,18 @@ fn build_an_invalid_chain() -> Vec<Header> {
 ///
 /// Side question: What is the fewest number of headers you could create to achieve this goal.
 fn build_forked_chain() -> (Vec<Header>, Vec<Header>) {
-    todo!("Exercise 6")
-
-    // Exercise 7: After you have completed this task, look at how its test is written below.
-    // There is a critical thinking question for you there.
+    let mut result1: Vec<Header> = vec![Header::genesis()];
+    let mut result2: Vec<Header> = vec![Header::genesis()];
+    result1.push(result1[0].child(1));
+    result2.push(result1[0].child(1));
+    result1.push(result1[1].child(2));
+    result2.push(result2[1].child(2));
+    result1.push(result1[2].child(30));
+    result2.push(result2[2].child(3));
+    result1.push(result1[3].child(40));
+    result2.push(result2[3].child(4));
+    
+    (result1, result2)
 }
 
 // To run these tests: `cargo test bc_2`
